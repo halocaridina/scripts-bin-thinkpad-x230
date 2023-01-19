@@ -1,0 +1,98 @@
+#!/bin/bash
+
+### Original author: Sebastien Vasey (http://svasey.org/)
+
+### Connect to a vpn server using openconnect. Take as argument a configuration
+### file specifying all the necessary parameters
+
+set -o errexit
+
+usage ()
+{
+    echo "Usage: vpn-connect [configpath]" 1>&2
+}
+
+CONFIGPATH="/etc/openconnect-helpers/default.conf"
+
+if [ $# -gt 1 -o "$1" = "-h" -o "$1" = "--help" ]; then
+    usage
+    exit 1
+fi
+
+if [ $# -eq 1 ]; then
+    CONFIGPATH="${1}"
+fi
+
+if [ ! -f "$CONFIGPATH" ]; then
+    echo "Configuration file ${CONFIGPATH} does not exist" 1>&2
+    exit 1
+fi
+
+# File where the daemon's pid is stored
+PID_FILE=/var/run/openconnect-script.pid
+# Temporary log file
+LOG_FILE=/var/log/openconnect-script.log
+
+# Initialize default values of configuration file variables
+
+VPN_SERVER=""
+USERNAME=""
+PASSWORD_FILE=""
+SERVER_SHA1=""
+SERVER_CERT=""
+ADDITIONAL_OPTS=""
+SCRIPT_PROGRAM="/etc/vpnc/vpnc-script"
+
+source "$CONFIGPATH"
+
+USER_OPT=""
+if [ "$USERNAME" ]; then
+    USER_OPT="--user=${USERNAME}"
+fi
+INPUT_FILE="&1"
+PASSWORD_OPT=""
+if [ "$PASSWORD_FILE" ]; then
+    PASSWORD_OPT="--passwd-on-stdin"
+    INPUT_FILE="${PASSWORD_FILE}"
+fi
+SHA1_OPT=""
+if [ "$SERVER_SHA1" ]; then
+    SHA1_OPT="--servercert=${SERVER_SHA1}"
+fi
+CERT_OPT=""
+if [ "$SERVER_CERT" ]; then
+    CERT_OPT="--cafile=${SERVER_CERT}"
+fi
+# First check if a previous vpn instance is not running
+if [ -f "$PID_FILE" ]; then
+    if pgrep "openconnect" >/dev/null; then
+	echo "Openconnect is already running. Make sure nothing " \
+	    "is running (use vpn-disconnect) and then retry. If you are " \
+	    "sure nothing is running, remove $PID_FILE" 1>&2
+	exit 1
+    else
+	rm  "$PID_FILE"
+    fi
+fi
+
+CMD="openconnect --background --script=${SCRIPT_PROGRAM} $USER_OPT $PASSWORD_OPT \
+    $SHA1_OPT $CERT_OPT $ADDITIONAL_OPTS $VPN_SERVER"
+
+if [ "$PASSWORD_FILE" ]; then
+    $CMD < $PASSWORD_FILE &>$LOG_FILE || true
+else
+    $CMD &>$LOG_FILE || true
+fi
+
+pgrep openconnect | head -n 1 > "$PID_FILE"
+
+if [ ! -s "$PID_FILE" ]; then
+    echo "ERROR: openconnect did not start successfully" 1>&2
+    cat $LOG_FILE 1>&2
+    rm "$PID_FILE"
+    exit 1
+else
+    echo "Openconnect successfully started. Use vpn-disconnect to stop."
+fi
+
+exit 0

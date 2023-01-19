@@ -1,0 +1,24 @@
+#!/bin/bash
+
+### Original author: Sebastien Vasey (http://svasey.org/)
+
+### Disconnect from the vpn server, or do not do anything if no vpn server has
+### been started yet.
+
+
+set -o errexit
+
+PID_FILE=/var/run/openconnect-script.pid
+
+if [ ! -f "$PID_FILE" ]; then
+    echo "Nothing to disconnect"
+    exit 1
+else
+    PID="$(cat $PID_FILE)"
+    kill $PID
+    echo "Disconnected" 
+fi
+
+rm  "$PID_FILE"
+
+exit 0
