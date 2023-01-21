@@ -3,6 +3,7 @@
 /usr/bin/echo -n "225" > /sys/devices/platform/i8042/serio1/serio2/sensitivity
 /usr/bin/echo -n "25" > /sys/devices/platform/i8042/serio1/serio2/drift_time
 /usr/bin/echo -n "120" > /sys/devices/platform/i8042/serio1/serio2/speed
+/usr/bin/echo -n "200" > /sys/devices/platform/i8042/serio1/serio2/rate
 
 #/usr/bin/echo -n "120" > /sys/devices/platform/i8042/serio1/serio2/sensitivity
 #/usr/bin/echo -n "25" > /sys/devices/platform/i8042/serio1/serio2/drift_time
